@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../home/home_screen.dart';
-import '../login/login_screen.dart';
+// import '../login/login_screen.dart';
+import '../login/login_screen_v2.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(builder: (context) => const LoginScreenV2()),
       );
     }
   }
