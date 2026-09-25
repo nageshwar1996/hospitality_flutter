@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../register/register_screen.dart';
+
 class LoginScreenV2 extends StatefulWidget {
   const LoginScreenV2({super.key});
   @override
@@ -7,6 +13,69 @@ class LoginScreenV2 extends StatefulWidget {
 }
 
 class _LoginScreenV2State extends State<LoginScreenV2> {
+  String phone = "";
+  String countryCode = '+91';
+
+  List<dynamic> countryCodes = [];
+
+  Future<void> fetchCountryCodes() async {
+    try {
+      final res = await http.get(
+        Uri.parse('http://192.168.1.103:5000/api/v1/country-codes'),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          countryCodes = data['data']['countryCodes'];
+        });
+      }
+    } catch (e) {
+      print("API ERROR: $e");
+    }
+  }
+
+  Future<void> login() async {
+    try {
+      final res = await http.post(
+        Uri.parse('http://192.168.1.103:5000/api/v1/auth/login'),
+        body: jsonEncode({"mobileNumber": phone, "countryCode": countryCode}),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      if (res.statusCode == 400) {
+        final data = jsonDecode(res.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: Duration(seconds: 5),
+            backgroundColor: Color(0xFFD92832),
+            content: Text(
+              data['message'],
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+                color: Color(0xFFFFFFFF),
+              ),
+            ),
+          ),
+        );
+      }
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        print("API RESPONSE: ${data}");
+      }
+    } catch (e) {
+      print("API ERROR: $e");
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCountryCodes();
+  }
+
   @override
   Widget build(BuildContext context) {
     return (Scaffold(
@@ -44,6 +113,12 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                 SizedBox(
                   height: 52,
                   child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        phone = value;
+                      });
+                    },
+                    keyboardType: TextInputType.phone,
                     cursorColor: const Color(0xFF009FA8),
                     style: TextStyle(
                       fontFamily: "Inter",
@@ -97,20 +172,27 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                             fontSize: 18,
                             color: Color(0xFF000000),
                           ),
-                          value: '+91',
-                          items: [
-                            DropdownMenuItem(value: '+91', child: Text('+91')),
-                            DropdownMenuItem(value: '+1', child: Text('+1')),
-                            DropdownMenuItem(value: '+12', child: Text('+12')),
-                            DropdownMenuItem(value: '+16', child: Text('+16')),
-                          ],
+                          value:
+                              countryCodes.any(
+                                (country) =>
+                                    country['dial_code'] == countryCode,
+                              )
+                              ? countryCode
+                              : null,
+                          items: countryCodes.map((country) {
+                            return DropdownMenuItem<String>(
+                              value: country['dial_code'],
+                              child: Text(country['dial_code']),
+                            );
+                          }).toList(),
                           onChanged: (value) {
-                            print(value);
+                            setState(() {
+                              countryCode = value!;
+                            });
                           },
                         ),
                       ),
                     ),
-                    keyboardType: TextInputType.phone,
                   ),
                 ),
                 SizedBox(height: 35),
@@ -119,7 +201,8 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      print("Btn click");
+                      login();
+                      print("Btn hit");
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF009FA8),
@@ -153,13 +236,23 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                         ),
                       ),
                       SizedBox(width: 4),
-                      Text(
-                        "Sing up now",
-                        style: TextStyle(
-                          fontFamily: "Inter",
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                          color: Color(0xFFB355A0),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          "Sing up now",
+                          style: TextStyle(
+                            fontFamily: "Inter",
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                            color: Color(0xFFB355A0),
+                          ),
                         ),
                       ),
                     ],
@@ -182,9 +275,19 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset("assets/images/google.png"),
+                      IconButton(
+                        onPressed: () {
+                          print("Google login");
+                        },
+                        icon: Image.asset("assets/images/google.png"),
+                      ),
                       SizedBox(width: 20),
-                      Image.asset("assets/images/facebook.png"),
+                      IconButton(
+                        onPressed: () {
+                          print("Facebook login");
+                        },
+                        icon: Image.asset("assets/images/facebook.png"),
+                      ),
                     ],
                   ),
                 ),
