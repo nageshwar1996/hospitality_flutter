@@ -13,14 +13,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Text(
-            "Register",
-            style: TextStyle(
-              fontFamily: "Inter",
-              fontWeight: FontWeight.w700,
-              fontSize: 24,
-              color: Color(0xCC3E3E3E),
-            ),
+          child: Column(
+            children: [
+              Text(
+                "Register",
+                style: TextStyle(
+                  fontFamily: "Inter",
+                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                  color: Color(0xCC3E3E3E),
+                ),
+              ),
+            ],
           ),
         ),
       ),

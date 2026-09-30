@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../login/login_screen.dart';
+import '../login/login_screen_v2.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -16,7 +16,7 @@ class HomeScreen extends StatelessWidget {
     // Navigate back to LoginScreen
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      MaterialPageRoute(builder: (context) => const LoginScreenV2()),
     );
   }
 

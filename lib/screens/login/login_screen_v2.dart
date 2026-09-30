@@ -1,10 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 import '../register/register_screen.dart';
+import '../verify-otp/verify_otp_screen.dart';
 
 class LoginScreenV2 extends StatefulWidget {
   const LoginScreenV2({super.key});
@@ -15,13 +20,14 @@ class LoginScreenV2 extends StatefulWidget {
 class _LoginScreenV2State extends State<LoginScreenV2> {
   String phone = "";
   String countryCode = '+91';
+  bool _isLoading = false;
 
   List<dynamic> countryCodes = [];
 
   Future<void> fetchCountryCodes() async {
     try {
       final res = await http.get(
-        Uri.parse('http://192.168.1.103:5000/api/v1/country-codes'),
+        Uri.parse('${dotenv.env['API_BASE_URL']}/api/v1/country-codes'),
       );
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -30,43 +36,104 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
         });
       }
     } catch (e) {
-      print("API ERROR: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Unable to fetch country codes. Please try again."),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  Future<void> login() async {
+  Future<void> _handleLogin() async {
+    if (phone.isEmpty || countryCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter phone number"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      final res = await http.post(
-        Uri.parse('http://192.168.1.103:5000/api/v1/auth/login'),
-        body: jsonEncode({"mobileNumber": phone, "countryCode": countryCode}),
-        headers: {"Content-Type": "application/json"},
+      final response = await http.post(
+        Uri.parse('${dotenv.env['API_BASE_URL']}/api/v1/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({"phoneNumber": phone, "countryCode": countryCode}),
       );
 
-      if (res.statusCode == 400) {
-        final data = jsonDecode(res.body);
+      if (!mounted) return;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+
+        // Store auth token in SharedPreferences
+        final String token =
+            data['token'] ??
+            data['accessToken'] ??
+            data['data']?['token'] ??
+            'logged_in_user_token';
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            duration: Duration(seconds: 5),
-            backgroundColor: Color(0xFFD92832),
-            content: Text(
-              data['message'],
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-                color: Color(0xFFFFFFFF),
-              ),
-            ),
+            content: Text(data['message'] ?? "Login Successful!"),
+            backgroundColor: Colors.green,
           ),
         );
-      }
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        print("API RESPONSE: ${data}");
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const VerifyOTPScreen()),
+        );
+      } else {
+        Map<String, dynamic>? errorData;
+        try {
+          errorData = jsonDecode(response.body);
+        } catch (_) {}
+
+        final errorMessage =
+            errorData?['message'] ??
+            "Login failed. (Code: ${response.statusCode})";
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
       }
+    } on SocketException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Unable to connect. Please check your internet connection.",
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
-      print("API ERROR: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("An error occurred: ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -201,8 +268,8 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      login();
-                      print("Btn hit");
+                      if (_isLoading) return;
+                      _handleLogin();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF009FA8),
@@ -210,15 +277,17 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: Text(
-                      "Continue",
-                      style: TextStyle(
-                        fontFamily: "Inter",
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
-                        color: Color(0xFFFFFFFF),
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            "Continue",
+                            style: TextStyle(
+                              fontFamily: "Inter",
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              color: Color(0xFFFFFFFF),
+                            ),
+                          ),
                   ),
                 ),
                 SizedBox(height: 34),
@@ -277,14 +346,14 @@ class _LoginScreenV2State extends State<LoginScreenV2> {
                     children: [
                       IconButton(
                         onPressed: () {
-                          print("Google login");
+                          debugPrint("Google login");
                         },
                         icon: Image.asset("assets/images/google.png"),
                       ),
                       SizedBox(width: 20),
                       IconButton(
                         onPressed: () {
-                          print("Facebook login");
+                          debugPrint("Facebook login");
                         },
                         icon: Image.asset("assets/images/facebook.png"),
                       ),
