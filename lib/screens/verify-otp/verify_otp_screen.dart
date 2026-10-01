@@ -7,7 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../home/home_screen.dart';
+import '../main/main_screen.dart';
 
 class VerifyOTPScreen extends StatefulWidget {
   final String phoneNumber;
@@ -147,7 +147,7 @@ class _VerifyOTPScreenState extends State<VerifyOTPScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       } else {
         Map<String, dynamic>? errorData;
